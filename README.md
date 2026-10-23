@@ -2,7 +2,7 @@
 
 A browser-based toolbox for mechanical design, machining, and cryogenic engineering. It combines sourced reference data, transparent calculations, and visual guides. Every result shows its method, source, and limitations, and can be reproduced from its inputs, calculation version, and dataset version.
 
-**Live site:** https://rycdan.github.io/engineering-toolbox/ (GitHub Pages, deployed from `main`)
+**GitHub Pages:** https://rycdan.github.io/engineering-toolbox/ — deployed from `main` by [.github/workflows/pages.yml](.github/workflows/pages.yml) once the repository has Pages enabled (Settings → Pages → Source: GitHub Actions).
 
 ## Status
 
