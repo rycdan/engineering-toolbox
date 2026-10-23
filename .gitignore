@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Test output and caches
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.vite/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment / credentials
+.env
+.env.*
+!.env.example
