@@ -34,3 +34,16 @@ export function formatFixed(value: number, decimals: number): string {
   const text = value.toFixed(decimals)
   return /^-0\.?0*$/.test(text) ? text.slice(1) : text
 }
+
+/** Up to `digits` significant figures with trailing zeros removed (for records). */
+export function formatPrecise(value: number, digits: number): string {
+  if (!Number.isFinite(value)) return '—'
+  const text = formatSignificant(value, digits)
+  if (text.includes('e')) return text.replace(/\.?0+e/, 'e')
+  return text.includes('.') ? text.replace(/\.?0+$/, '') : text
+}
+
+export function formatSignedPrecise(value: number, digits: number): string {
+  const text = formatPrecise(value, digits)
+  return value > 0 ? `+${text}` : text
+}

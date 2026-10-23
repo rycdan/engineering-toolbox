@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatFixed, formatSignedSignificant, formatSignificant } from '../../src/engineering/format'
+import { formatFixed, formatPrecise, formatSignedSignificant, formatSignificant } from '../../src/engineering/format'
 
 describe('formatSignificant', () => {
   it.each([
@@ -25,5 +25,17 @@ describe('formatSignedSignificant / formatFixed', () => {
   })
   it('does not show negative zero', () => {
     expect(formatFixed(-0.0001, 2)).toBe('0.00')
+  })
+})
+
+describe('formatPrecise', () => {
+  it.each([
+    [293.15, 12, '293.15'],
+    [20 + 273.15, 12, '293.15'],
+    [100, 12, '100'],
+    [-0.000389034485, 12, '-0.000389034485'],
+    [1.5e-9, 12, '1.5e-9'],
+  ])('%s → %s', (value, digits, expected) => {
+    expect(formatPrecise(value, digits)).toBe(expected)
   })
 })

@@ -12,7 +12,7 @@ Status key: **available** · **in progress** · **planned** (visible in the app 
 | 2 | Machining Threads & Tolerances | planned | 3 |
 | 3 | Shaft & Hole Fits | planned | 4 |
 | 4 | Materials (general, room-temperature reference) | planned | 8 (data sourcing can start earlier) |
-| 5 | Thermal Expansion & Contraction | in progress | 1 |
+| 5 | Thermal Expansion & Contraction | **available** (v1 scope below) | 1 |
 | 6 | Conductive Heat Flow | planned | 5 |
 | 7 | Bolt Torque & Preload | planned | 5 |
 | 8 | Pin & Slot GD&T Guide | planned | 6–7 |
@@ -26,7 +26,7 @@ Status key: **available** · **in progress** · **planned** (visible in the app 
 - Confirmed geometry and chamfer conventions recorded in [ENGINEERING_METHODS.md](ENGINEERING_METHODS.md#confirmed-conventions-for-later-modules).
 - Project scripts (`npm run check`, etc.) and the Git iteration policy ([GIT_WORKFLOW.md](GIT_WORKFLOW.md)).
 
-### Iteration 1 — foundation and thermal expansion/contraction (in progress)
+### Iteration 1 — foundation and thermal expansion/contraction
 
 - App shell with all eight destinations; seven are labeled planned.
 - Shared units (length, temperature point vs. difference, CTE), finite-number validation, display formatting separate from calculation precision.
