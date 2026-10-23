@@ -3,4 +3,4 @@
  * value changes, and record the change in docs/DATA_SOURCES.md. Model records
  * also carry their own revision numbers.
  */
-export const DATASET_VERSION = '2026.10.0'
+export const DATASET_VERSION = '2026.10.1'

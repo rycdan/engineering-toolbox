@@ -82,7 +82,7 @@ describe('calculation record', () => {
     for (const fragment of [
       `Calculation version: ${THERMAL_CALC_VERSION}`,
       `Dataset version: ${DATASET_VERSION}`,
-      'nist-6061-t6-linear-expansion (revision 1)',
+      'al-6061-t6/linear-expansion (revision 1)',
       'Initial length: 100 mm',
       'Initial temperature: 20 °C = 293.15 K',
       'Length change: -389.034485',

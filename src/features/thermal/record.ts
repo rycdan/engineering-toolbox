@@ -7,7 +7,7 @@ import {
   metersToLength,
 } from '../../engineering/units'
 import { getSource } from '../../data/sources'
-import { MATERIALS } from '../../data/materials'
+import { cryoMaterial } from '../../data/nist-cryogenic'
 import { DATASET_VERSION } from '../../data/version'
 import type { ResolvedThermal, ThermalFormState } from './thermalState'
 
@@ -44,15 +44,21 @@ export function buildThermalRecord(
   ]
   if (method.kind === 'model') {
     const m = method.model
-    const mat = MATERIALS[m.materialId]
+    const mat = cryoMaterial(m.materialId)
     lines.push(
-      `  Temperature-dependent reference-strain model: ${m.label}`,
+      m.kind === 'reference-strain'
+        ? `  Temperature-dependent reference-strain model: ${m.label}`
+        : `  Integrated-CTE model: ${m.label}`,
       `  Model id: ${m.id} (revision ${m.revision})`,
-      ...(mat ? [`  Material: ${mat.name}; ${mat.designation}; condition ${mat.condition}; product form: ${mat.productForm}`] : []),
+      ...(mat ? [`  Material: ${mat.name} (NIST: ${mat.nistName}); ${mat.family} / ${mat.subfamily}`] : []),
+      ...(m.variant ? [`  Variant: ${m.variant}`] : []),
       `  Source quantity: ${m.quantity}, scale ${m.scale}`,
       `  Equation: ${m.equationText}`,
-      `  Equation range ${m.equationRangeK[0]}–${m.equationRangeK[1]} K; data range ${m.dataRangeK[0]}–${m.dataRangeK[1]} K; fit error ${m.fitErrorPercent ?? 'not stated'} % (${m.fitErrorBasis})`,
-      '  Ratio method: Lf = Li·(1 + ε(Tf)) / (1 + ε(Ti))',
+      `  Equation range ${m.equationRangeK[0]}–${m.equationRangeK[1]} K; data range ${m.dataRangeK ? `${m.dataRangeK[0]}–${m.dataRangeK[1]} K` : 'not stated'}; NIST curve-fit error ${m.fitErrorText}`,
+      `  Verification: ${m.verification}`,
+      m.kind === 'reference-strain'
+        ? '  Ratio method: Lf = Li·(1 + ε(Tf)) / (1 + ε(Ti))'
+        : '  ε(T) = ∫ α dT from 293 K (α referenced to L293); Lf = Li·(1 + ε(Tf)) / (1 + ε(Ti))',
     )
   } else {
     lines.push(

@@ -1,11 +1,12 @@
 import { fail, ok, type Issue, type Outcome } from '../outcome'
-import { isInEquationRange, referenceStrain, type ThermalExpansionModel } from './models'
+import { integrate } from '../cryogenic/integrate'
+import { cteAt, isInEquationRange, referenceStrain, type IntegratedCteModel, type ThermalExpansionModel } from './models'
 
 /**
  * Calculation version. Bump when the method or numerical behavior changes so
  * saved records identify the algorithm that produced them.
  */
-export const THERMAL_CALC_VERSION = 'thermal-expansion@1.0.0'
+export const THERMAL_CALC_VERSION = 'thermal-expansion@1.1.0'
 
 /**
  * Constant-CTE conventions (docs/ENGINEERING_METHODS.md, Method B):
@@ -104,14 +105,7 @@ export function computeThermalLengthChange(input: ThermalInputs, method: Thermal
     strainInitialRef = ei
     strainFinalRef = ef
     changeM = (Li * (ef - ei)) / (1 + ei)
-    for (const bp of model.breakpoints) {
-      if (Math.min(Ti, Tf) < bp.kelvin) {
-        notes.push({
-          severity: 'info',
-          text: `Below ${bp.kelvin} K this model uses the source's constant value, so the length is treated as unchanged between ${model.equationRangeK[0]} K and ${bp.kelvin} K.`,
-        })
-      }
-    }
+    notes.push(...modelNotes(model, Ti, Tf))
   } else {
     const { alphaPerK, convention } = method
     const x = alphaPerK * deltaTK
@@ -145,6 +139,33 @@ export function computeThermalLengthChange(input: ThermalInputs, method: Thermal
   })
 }
 
+/** Interval-specific notes for a temperature-dependent model. */
+function modelNotes(model: ThermalExpansionModel, Ti: number, Tf: number): ThermalNote[] {
+  const notes: ThermalNote[] = []
+  const tMin = Math.min(Ti, Tf)
+  const tMax = Math.max(Ti, Tf)
+  const first = model.segments[0]
+  if (first?.equation.form === 'constant' && tMin < first.upper.kelvin) {
+    notes.push({
+      severity: 'info',
+      text: `Below ${first.upper.kelvin} K this model uses the source's constant value, so the length is treated as unchanged between ${model.equationRangeK[0]} K and ${first.upper.kelvin} K.`,
+    })
+  }
+  if (model.dataRangeK && (tMin < model.dataRangeK[0] || tMax > model.dataRangeK[1])) {
+    notes.push({
+      severity: 'warning',
+      text: `Part of this interval lies outside the measured data (${model.dataRangeK[0]}–${model.dataRangeK[1]} K). It is inside the source's stated equation range (${model.equationRangeK[0]}–${model.equationRangeK[1]} K), but there the result rests on the fit alone.`,
+    })
+  }
+  if (model.kind === 'integrated-cte') {
+    notes.push({
+      severity: 'info',
+      text: 'Length change is computed by integrating the source’s CTE curve, taking α as referenced to the 293 K length. Treating α as instantaneous instead changes the strain by about ε²/2, which is small compared with the stated fit error.',
+    })
+  }
+  return notes
+}
+
 export interface CurvePoint {
   kelvin: number
   lengthM: number
@@ -160,8 +181,12 @@ export function sampleLengthCurve(input: ThermalInputs, method: ThermalMethod, s
   let lo: number
   let hi: number
   let lengthAt: (T: number) => number
+  if (method.kind === 'model' && method.model.kind === 'integrated-cte') {
+    return sampleIntegratedCurve(input, method.model, samples)
+  }
   if (method.kind === 'model') {
     ;[lo, hi] = method.model.equationRangeK
+    lo = Math.max(lo, PLOT_MIN_K)
     const ei = referenceStrain(method.model, Ti)
     lengthAt = (T) => (Li * (1 + referenceStrain(method.model, T))) / (1 + ei)
   } else {
@@ -180,6 +205,28 @@ export function sampleLengthCurve(input: ThermalInputs, method: ThermalMethod, s
   for (let i = 0; i <= samples; i++) {
     const T = lo + ((hi - lo) * i) / samples
     points.push({ kelvin: T, lengthM: lengthAt(T) })
+  }
+  return points
+}
+
+/** Plots start no lower than this (some equation ranges begin at 0 K). */
+const PLOT_MIN_K = 1
+
+/** Integrated-CTE curves: accumulate ε along the grid instead of re-integrating from 293 K at every point. */
+function sampleIntegratedCurve(input: ThermalInputs, model: IntegratedCteModel, samples: number): CurvePoint[] {
+  const lo = Math.max(model.equationRangeK[0], PLOT_MIN_K)
+  const hi = model.equationRangeK[1]
+  const alpha = (T: number) => cteAt(model, T)
+  const strainAtLo = referenceStrain(model, lo)
+  const ei = referenceStrain(model, input.initialK)
+  const points: CurvePoint[] = []
+  let strain = strainAtLo
+  let prev = lo
+  for (let i = 0; i <= samples; i++) {
+    const T = lo + ((hi - lo) * i) / samples
+    strain += integrate(alpha, prev, T)
+    prev = T
+    points.push({ kelvin: T, lengthM: (input.initialLengthM * (1 + strain)) / (1 + ei) })
   }
   return points
 }

@@ -1,35 +1,16 @@
+import { evaluateSegments, findSegment, type Segment } from '../cryogenic/equations'
+import { integrate } from '../cryogenic/integrate'
+
 /**
- * Temperature-dependent thermal-expansion model definitions.
+ * Temperature-dependent thermal-expansion models.
  *
- * Only the "reference-strain" kind exists in v1: sources that publish the
- * integrated relative length change ε(T) = (L(T) − L_ref)/L_ref. Such curves
- * are used through the ratio method and are never integrated again.
+ * - reference-strain: the source publishes the integrated relative length
+ *   change ε(T) = (L(T) − L_ref)/L_ref. Used through the ratio method and never
+ *   integrated again.
+ * - integrated-cte: the source publishes only a CTE curve α(T). ε(T) is its
+ *   integral from the reference temperature, with α taken as referenced to
+ *   L_ref: ε(T) = ∫ α dT (see docs/ENGINEERING_METHODS.md).
  */
-
-/** Interval bound in kelvin with explicit ownership of the endpoint. */
-export interface Bound {
-  kelvin: number
-  inclusive: boolean
-}
-
-interface SegmentBase {
-  lower: Bound
-  upper: Bound
-}
-
-/** y = Σ coefficients[i] · T^i, T in kelvin. */
-export interface PolynomialSegment extends SegmentBase {
-  kind: 'polynomial'
-  coefficients: readonly number[]
-}
-
-/** y = value (constant). */
-export interface ConstantSegment extends SegmentBase {
-  kind: 'constant'
-  value: number
-}
-
-export type Segment = PolynomialSegment | ConstantSegment
 
 export interface Breakpoint {
   kelvin: number
@@ -37,22 +18,24 @@ export interface Breakpoint {
   owner: 'lower' | 'upper'
   /** The source's own wording for the segment conditions. */
   sourceWording: string
-  /** Documented upper bound on |strain jump| at the breakpoint (tested). */
-  maxJumpStrain: number
-  rationale: string
+  /** |strain(upper) − strain(lower)| at the breakpoint, computed from the published equations. */
+  jumpStrain: number
 }
 
-export interface ReferenceStrainModel {
-  kind: 'reference-strain'
+interface ThermalModelBase {
   id: string
   revision: number
   materialId: string
   /** Short label for selectors. */
   label: string
-  /** The source's definition of the tabulated quantity, e.g. "(L − L293)/L293". */
+  /** Direction, density, or other variant descriptor from the source, if any. */
+  variant: string | null
+  /** Material family, for grouping. */
+  family: string
+  /** The source's definition of the tabulated quantity. */
   quantity: string
   referenceTemperatureK: number
-  /** strain = y × scale */
+  /** canonical value = equation value × scale (strain for reference-strain, 1/K for integrated-cte) */
   scale: number
   /** Human-readable equation as published. */
   equationText: string
@@ -60,56 +43,54 @@ export interface ReferenceStrainModel {
   breakpoints: readonly Breakpoint[]
   /** Range over which the equation is stated valid (blocked outside). */
   equationRangeK: readonly [number, number]
-  /** Range covered by the measured data behind the fit. */
-  dataRangeK: readonly [number, number]
-  fitErrorPercent: number | null
-  fitErrorBasis: string
+  /** Range covered by the measured data behind the fit; null when the source does not state it. */
+  dataRangeK: readonly [number, number] | null
+  fitErrorText: string
   sourceIds: readonly string[]
   /** Limitations displayed next to results from this model. */
   limitations: readonly string[]
+  /** Comparison with NIST's evaluated tables, as displayed. */
+  verification: string
 }
 
-export type ThermalExpansionModel = ReferenceStrainModel
-
-function within(T: number, s: SegmentBase): boolean {
-  const aboveLower = s.lower.inclusive ? T >= s.lower.kelvin : T > s.lower.kelvin
-  const belowUpper = s.upper.inclusive ? T <= s.upper.kelvin : T < s.upper.kelvin
-  return aboveLower && belowUpper
+export interface ReferenceStrainModel extends ThermalModelBase {
+  kind: 'reference-strain'
 }
 
-/** Horner evaluation of Σ c_i·x^i. */
-export function evaluatePolynomial(coefficients: readonly number[], x: number): number {
-  let result = 0
-  for (let i = coefficients.length - 1; i >= 0; i--) {
-    result = result * x + (coefficients[i] ?? 0)
-  }
-  return result
+export interface IntegratedCteModel extends ThermalModelBase {
+  kind: 'integrated-cte'
+  /** α is taken as (1/L_ref)·dL/dT, so ε(T) = ∫ α dT from the reference temperature. */
+  convention: 'reference-length'
 }
 
-export function findSegment(model: ReferenceStrainModel, kelvin: number): Segment | undefined {
-  return model.segments.find((s) => within(kelvin, s))
-}
+export type ThermalExpansionModel = ReferenceStrainModel | IntegratedCteModel
 
-/** Raw source quantity y(T) for one segment (no range checks). */
-export function evaluateSegment(segment: Segment, kelvin: number): number {
-  return segment.kind === 'constant' ? segment.value : evaluatePolynomial(segment.coefficients, kelvin)
-}
-
-export function isInEquationRange(model: ReferenceStrainModel, kelvin: number): boolean {
+export function isInEquationRange(model: ThermalExpansionModel, kelvin: number): boolean {
   const [lo, hi] = model.equationRangeK
-  return Number.isFinite(kelvin) && kelvin >= lo && kelvin <= hi && findSegment(model, kelvin) !== undefined
+  return Number.isFinite(kelvin) && kelvin > 0 && kelvin >= lo && kelvin <= hi && findSegment(model.segments, kelvin) !== undefined
+}
+
+function scaledValue(model: ThermalExpansionModel, kelvin: number): number {
+  const y = evaluateSegments(model.segments, kelvin)
+  if (y === undefined) throw new RangeError(`${kelvin} K is outside every segment of ${model.label}`)
+  return y * model.scale
+}
+
+/** α(T) in 1/K for an integrated-CTE model. */
+export function cteAt(model: IntegratedCteModel, kelvin: number): number {
+  return scaledValue(model, kelvin)
 }
 
 /**
- * ε(T) = (L(T) − L_ref)/L_ref for a reference-strain model.
+ * ε(T) = (L(T) − L_ref)/L_ref relative to the model's reference temperature.
  * Throws RangeError outside the equation range; callers validate first.
  */
-export function referenceStrain(model: ReferenceStrainModel, kelvin: number): number {
+export function referenceStrain(model: ThermalExpansionModel, kelvin: number): number {
   if (!isInEquationRange(model, kelvin)) {
     throw new RangeError(
       `${kelvin} K is outside the ${model.label} equation range ${model.equationRangeK[0]}–${model.equationRangeK[1]} K`,
     )
   }
-  const segment = findSegment(model, kelvin)!
-  return evaluateSegment(segment, kelvin) * model.scale
+  if (model.kind === 'reference-strain') return scaledValue(model, kelvin)
+  return integrate((t) => scaledValue(model, t), model.referenceTemperatureK, kelvin)
 }

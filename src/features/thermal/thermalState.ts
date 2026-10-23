@@ -18,7 +18,7 @@ import {
   type LengthUnit,
   type TemperatureUnit,
 } from '../../engineering/units'
-import { THERMAL_MODELS, findThermalModel } from '../../data/thermal'
+import { DEFAULT_THERMAL_MODEL_ID, findThermalModel } from '../../data/thermal'
 import { DATASET_VERSION } from '../../data/version'
 
 export type MethodKind = 'model' | 'constant-cte'
@@ -43,7 +43,7 @@ export interface ThermalFormState {
 /** Default example: a 100 mm 6061-T6 part cooled from 20 °C to liquid-nitrogen temperature. */
 export const DEFAULT_THERMAL_STATE: ThermalFormState = {
   method: 'model',
-  modelId: THERMAL_MODELS[0]!.id,
+  modelId: DEFAULT_THERMAL_MODEL_ID,
   cte: '',
   cteUnit: 'ppm_per_K',
   convention: 'mean-linear',
@@ -120,7 +120,8 @@ export function paramsToState(params: URLSearchParams): ParsedThermalUrl {
   state.method = pick(KEYS.method, (v): v is MethodKind => v === 'model' || v === 'constant-cte', state.method, 'method')
   const modelId = text(KEYS.modelId)
   if (modelId !== undefined) {
-    if (findThermalModel(modelId)) state.modelId = modelId
+    const found = findThermalModel(modelId)
+    if (found) state.modelId = found.id
     else warnings.push(`The linked material model "${modelId}" is not in dataset ${DATASET_VERSION}.`)
   }
   state.cte = text(KEYS.cte) ?? state.cte

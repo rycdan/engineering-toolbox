@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeThermalLengthChange, sampleLengthCurve, type ThermalMethod } from '../../src/engineering/thermal/expansion'
-import { evaluatePolynomial, evaluateSegment, isInEquationRange, referenceStrain } from '../../src/engineering/thermal/models'
+import { isInEquationRange, referenceStrain } from '../../src/engineering/thermal/models'
+import { evaluateEquation } from '../../src/engineering/cryogenic/equations'
 import { NIST_6061_T6_EXPANSION as M } from '../../src/data/thermal/nist6061T6'
 import { lengthToMeters, metersToLength, temperatureToKelvin } from '../../src/engineering/units'
 
@@ -79,14 +80,16 @@ describe('TE-P: physical and algebraic invariants', () => {
 
 describe('TE-BP: NIST 6061-T6 piecewise breakpoint', () => {
   const bp = M.breakpoints[0]!
-  it('documented jump at 18 K is within the stated bound', () => {
+  it('jump at 18 K is the documented 6.9×10⁻⁸ strain (below the source resolution)', () => {
     const [low, high] = M.segments
-    const jump = Math.abs(evaluateSegment(high!, bp.kelvin) - evaluateSegment(low!, bp.kelvin)) * M.scale
-    expect(jump).toBeLessThan(bp.maxJumpStrain)
+    const jump = Math.abs(evaluateEquation(high!.equation, bp.kelvin) - evaluateEquation(low!.equation, bp.kelvin)) * M.scale
+    expect(jump).toBeLessThan(1e-7)
     expect(jump).toBeGreaterThan(6e-8) // confirms the real (non-zero) discontinuity is what was documented
+    expect(bp.jumpStrain).toBeCloseTo(jump, 20)
+    expect(bp.owner).toBe('upper')
   })
   it('T = 18 K is owned by the polynomial; just below uses f', () => {
-    expect(referenceStrain(M, 18)).toBeCloseTo(evaluatePolynomial([-412.77, -0.30389, 8.7696e-3, -9.9821e-6, 0], 18) * 1e-5, 15)
+    expect(referenceStrain(M, 18)).toBeCloseTo(evaluateEquation({ form: 'polynomial', coefficients: [-412.77, -0.30389, 8.7696e-3, -9.9821e-6, 0] }, 18) * 1e-5, 15)
     expect(referenceStrain(M, 17.999)).toBe(-415.45e-5)
     expect(referenceStrain(M, 4)).toBe(-415.45e-5)
   })

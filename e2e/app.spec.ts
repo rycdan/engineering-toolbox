@@ -35,7 +35,7 @@ test.describe('thermal calculator', () => {
     // Independent benchmark TE-B3 scaled: ΔL = −389.034 µm, Lf = 99.6109655 mm
     await expect(page.getByTestId('change')).toContainText('-389.03')
     await expect(page.getByTestId('final-length')).toContainText('99.6109655')
-    await expect(page.getByRole('list', { name: 'Limitations for this result' })).toContainText('Equation range 4–300 K (300 K = 26.85 °C = 80.33 °F)')
+    await expect(page.getByRole('list', { name: 'Limitations for this result' })).toContainText('Equation range 4–300 K; the upper limit 300 K (26.85 °C, 80.33 °F)')
   })
 
   test('unit equivalence: inch/°F input gives the same change', async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe('thermal calculator', () => {
   test('blocks temperatures outside the model range and shows no result', async ({ page }) => {
     await page.goto('./#/thermal')
     await page.getByLabel('Initial temperature', { exact: true }).fill('30')
-    await expect(page.getByText(/outside the Aluminum 6061-T6 \(NIST\) equation range 4–300 K/).first()).toBeVisible()
+    await expect(page.getByText(/outside the Aluminum 6061-T6 equation range 4–300 K/).first()).toBeVisible()
     await expect(page.getByTestId('change')).toHaveCount(0)
   })
 
@@ -85,6 +85,24 @@ test.describe('thermal calculator', () => {
     await expect(page.getByTestId('change')).toContainText('-389.03')
   })
 
+  test('other NIST materials: 304 stainless (published strain) and OFHC copper (integrated CTE)', async ({ page }) => {
+    await page.goto('./#/thermal')
+    const select = page.getByLabel('Material model')
+    // 100 mm, 20 °C → 77 K. 304: exact-rational check gives −280.19499 µm.
+    await select.selectOption({ label: 'Stainless steel 304' })
+    await expect(page.getByTestId('change')).toContainText('-280.19')
+    await select.selectOption({ label: 'Copper (OFHC)' })
+    await expect(page.getByTestId('change')).toContainText('-304.48')
+    await page.getByText('Model coverage and sources').click()
+    await expect(page.getByText(/integrated CTE curve/)).toBeVisible()
+    await expect(page).toHaveURL(/model=copper-ofhc%2Fexpansion-coefficient/)
+  })
+
+  test('older 6061 links still resolve', async ({ page }) => {
+    await page.goto('./#/thermal?method=model&model=nist-6061-t6-linear-expansion&L=100&LU=mm&Ti=20&TiU=C&Tf=77&TfU=K&outU=mm&dU=um')
+    await expect(page.getByTestId('change')).toContainText('-389.03')
+  })
+
   test('warns when a link was made with a different dataset version', async ({ page }) => {
     await page.goto('./#/thermal?Tf=77&dv=2000.1.0')
     await expect(page.getByRole('alert').filter({ hasText: 'dataset 2000.1.0' })).toBeVisible()
@@ -94,7 +112,7 @@ test.describe('thermal calculator', () => {
     await page.goto('./#/thermal')
     await expect(page.getByRole('img', { name: /Part length versus temperature/ })).toBeVisible()
     await page.getByText('Model coverage and sources').click()
-    await expect(page.getByRole('link', { name: /6061-T6 Aluminum \(UNS A96061\)/ })).toHaveAttribute('href', /trc\.nist\.gov/)
+    await expect(page.getByRole('link', { name: 'Material Properties: Aluminum 6061-T6' })).toHaveAttribute('href', /trc\.nist\.gov/)
   })
 
   test('copy record puts a reproducible record on the clipboard', async ({ page, context }) => {
@@ -103,7 +121,7 @@ test.describe('thermal calculator', () => {
     await page.getByRole('button', { name: 'Copy record' }).click()
     await expect(page.getByText('Calculation record copied.')).toBeVisible()
     const text = await page.evaluate(() => navigator.clipboard.readText())
-    expect(text).toContain('Calculation version: thermal-expansion@1.0.0')
+    expect(text).toContain('Calculation version: thermal-expansion@1.1.0')
     expect(text).toContain('Reproduce: http')
   })
 })

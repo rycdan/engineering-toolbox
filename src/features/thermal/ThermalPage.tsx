@@ -20,8 +20,8 @@ import {
   type TemperatureUnit,
 } from '../../engineering/units'
 import { parseNumber } from '../../engineering/outcome'
-import { THERMAL_MODELS, findThermalModel } from '../../data/thermal'
-import { MATERIALS } from '../../data/materials'
+import { MATERIALS_WITHOUT_EXPANSION, THERMAL_MODELS, findThermalModel } from '../../data/thermal'
+import { cryoMaterial } from '../../data/nist-cryogenic'
 import { DATASET_VERSION } from '../../data/version'
 import { buildThermalRecord } from './record'
 import {
@@ -37,7 +37,7 @@ const PATH = '/thermal'
 const lengthOptions: Option<(typeof LENGTH_UNIT_IDS)[number]>[] = LENGTH_UNIT_IDS.map((u) => ({ value: u, label: LENGTH_UNITS[u].label }))
 const tempOptions: Option<TemperatureUnit>[] = TEMPERATURE_UNIT_IDS.map((u) => ({ value: u, label: TEMPERATURE_UNITS[u].label }))
 const cteOptions = CTE_UNIT_IDS.map((u) => ({ value: u, label: CTE_UNITS[u].label }))
-const modelOptions = THERMAL_MODELS.map((m) => ({ value: m.id, label: m.label }))
+const modelOptions = THERMAL_MODELS.map((m) => ({ value: m.id, label: m.label, group: m.family }))
 
 function shareUrl(state: ThermalFormState): string {
   const { origin, pathname } = window.location
@@ -80,7 +80,7 @@ export function ThermalPage({ query }: { query: URLSearchParams }) {
   }
 
   const model = state.method === 'model' ? findThermalModel(state.modelId) : undefined
-  const material = model ? MATERIALS[model.materialId] : undefined
+  const material = model ? cryoMaterial(model.materialId) : undefined
 
   const tempHint = (text: string, unit: TemperatureUnit) => {
     const v = parseNumber(text)
@@ -175,8 +175,9 @@ export function ThermalPage({ query }: { query: URLSearchParams }) {
                   {formatFixed(kelvinToTemperature(model.equationRangeK[0], 'C'), 2)} to{' '}
                   {formatFixed(kelvinToTemperature(model.equationRangeK[1], 'C'), 2)} °C,{' '}
                   {formatFixed(kelvinToTemperature(model.equationRangeK[0], 'F'), 2)} to{' '}
-                  {formatFixed(kelvinToTemperature(model.equationRangeK[1], 'F'), 2)} °F). Measured data {model.dataRangeK[0]}–
-                  {model.dataRangeK[1]} K.
+                  {formatFixed(kelvinToTemperature(model.equationRangeK[1], 'F'), 2)} °F).{' '}
+                  {model.dataRangeK ? `Measured data ${model.dataRangeK[0]}–${model.dataRangeK[1]} K.` : 'Measured-data range not stated.'}{' '}
+                  {THERMAL_MODELS.length} NIST expansion models available.
                 </p>
               )}
             </>
@@ -317,21 +318,36 @@ export function ThermalPage({ query }: { query: URLSearchParams }) {
         <summary>Method and equations</summary>
         {state.method === 'model' && model ? (
           <div className="method">
-            <p>
-              <strong>{model.label}</strong>: the source publishes the integrated relative length change{' '}
-              <code>ε(T) = {model.quantity}</code>, tabulated as <code>y = ε / {model.scale}</code>, with T in kelvin.
-            </p>
-            <pre>{model.equationText}</pre>
-            <p>The curve is already integrated, so it is not integrated again. The final length uses the ratio method:</p>
+            {model.kind === 'reference-strain' ? (
+              <>
+                <p>
+                  <strong>{model.label}</strong>: the source publishes the integrated relative length change{' '}
+                  <code>ε(T) = {model.quantity}</code>, tabulated as <code>y = ε / {model.scale}</code>, with T in kelvin.
+                </p>
+                <pre>{model.equationText}</pre>
+                <p>The curve is already integrated, so it is not integrated again. The final length uses the ratio method:</p>
+              </>
+            ) : (
+              <>
+                <p>
+                  <strong>{model.label}</strong>: NIST publishes only the expansion coefficient <code>{model.quantity}</code>.
+                  The strain relative to 293 K is its integral, with α taken as referenced to the 293 K length:
+                </p>
+                <pre>{model.equationText}</pre>
+                <pre>{'ε(T) = ∫ α(T′) dT′  from 293 K to T   (5-point Gauss–Legendre, 1 K panels)'}</pre>
+                <p>
+                  Treating α as instantaneous, (1/L)·dL/dT, would give ln(1 + ε) = ∫ α dT instead, a difference of about ε²/2.
+                  That is below 10⁻⁵ strain for these materials, well within the stated fit error.
+                </p>
+              </>
+            )}
             <pre>{'Lf = Li · (1 + ε(Tf)) / (1 + ε(Ti))\nΔL = Li · (ε(Tf) − ε(Ti)) / (1 + ε(Ti))'}</pre>
-            <p>
-              The ratio form also removes the fit’s small non-zero value at the nominal reference temperature (ε(293 K) ≈
-              −3.6×10⁻⁷ for this model).
-            </p>
+            <p>The ratio form also removes any small non-zero value of the fit at the nominal 293 K reference.</p>
             {model.breakpoints.map((bp) => (
               <p key={bp.kelvin}>
                 <strong>Breakpoint at {bp.kelvin} K.</strong> Source: {bp.sourceWording}. This app assigns {bp.kelvin} K to the{' '}
-                {bp.owner === 'upper' ? 'polynomial (upper) segment' : 'lower segment'}. {bp.rationale}
+                {bp.owner === 'upper' ? 'higher-temperature' : 'lower-temperature'} expression. The published expressions differ there by{' '}
+                {bp.jumpStrain.toExponential(1)} strain.
               </p>
             ))}
             <p>
@@ -363,28 +379,36 @@ export function ThermalPage({ query }: { query: URLSearchParams }) {
           <dl className="meta-grid">
             <dt>Material</dt>
             <dd>
-              {material ? `${material.name}, ${material.designation}, condition ${material.condition}` : model.materialId}
+              {material ? `${material.name} (NIST: ${material.nistName}); ${material.family} / ${material.subfamily}` : model.materialId}
             </dd>
-            <dt>Product form</dt>
-            <dd>{material?.productForm ?? 'Not specified'}</dd>
+            {model.variant && (
+              <>
+                <dt>Variant</dt>
+                <dd>{model.variant}</dd>
+              </>
+            )}
+            <dt>Identity</dt>
+            <dd>{material && material.identityNotes.length > 0 ? material.identityNotes.join(' ') : 'No further identity details on the source page.'}</dd>
             <dt>Equation range</dt>
             <dd>
               {model.equationRangeK[0]}–{model.equationRangeK[1]} K
             </dd>
             <dt>Measured-data range</dt>
-            <dd>
-              {model.dataRangeK[0]}–{model.dataRangeK[1]} K
-            </dd>
+            <dd>{model.dataRangeK ? `${model.dataRangeK[0]}–${model.dataRangeK[1]} K` : 'Not stated separately'}</dd>
             <dt>Fit error</dt>
-            <dd>
-              {model.fitErrorPercent === null ? 'Not stated' : `${model.fitErrorPercent} %`}. {model.fitErrorBasis}
-            </dd>
+            <dd>{model.fitErrorText} (NIST curve-fit error relative to data; not total uncertainty)</dd>
+            <dt>Verification</dt>
+            <dd>{model.verification}</dd>
             <dt>Model</dt>
             <dd>
-              {model.id}, revision {model.revision}
+              {model.id}, revision {model.revision} ({model.kind === 'reference-strain' ? 'published strain curve' : 'integrated CTE curve'})
             </dd>
           </dl>
           <SourceList ids={model.sourceIds} />
+          <p className="field-hint">
+            NIST materials without an expansion model:{' '}
+            {MATERIALS_WITHOUT_EXPANSION.map((m) => `${m.name} (${m.properties})`).join('; ')}.
+          </p>
         </details>
       )}
     </section>

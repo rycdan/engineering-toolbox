@@ -3,6 +3,30 @@ import { useId, type ReactNode } from 'react'
 export interface Option<T extends string> {
   value: T
   label: string
+  /** Options sharing a group render under one <optgroup>. */
+  group?: string
+}
+
+function renderOptions<T extends string>(options: readonly Option<T>[]) {
+  const groups = [...new Set(options.map((o) => o.group))]
+  if (groups.length === 1 && groups[0] === undefined) {
+    return options.map((o) => (
+      <option key={o.value} value={o.value}>
+        {o.label}
+      </option>
+    ))
+  }
+  return groups.map((g) => (
+    <optgroup key={g ?? ''} label={g ?? 'Other'}>
+      {options
+        .filter((o) => o.group === g)
+        .map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+    </optgroup>
+  ))
 }
 
 interface SelectProps<T extends string> {
@@ -23,11 +47,7 @@ export function SelectField<T extends string>({ label, value, options, onChange,
         {label}
       </label>
       <select id={id} name={name} value={value} onChange={(e) => onChange(e.target.value as T)}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
+        {renderOptions(options)}
       </select>
     </div>
   )
