@@ -16,7 +16,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "e2e": "playwright test",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "data:nist": "node tools/nist-cryogenic/extract.ts && node tools/nist-cryogenic/verify-bradley.ts",
+    "data:bradley-layout": "python -I tools/nist-cryogenic/bradley_layout.py"
   },
   "dependencies": {
     "react": "19.3.0",
