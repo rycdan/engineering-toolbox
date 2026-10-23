@@ -1,0 +1,14 @@
+{
+  "id": "TE-B3",
+  "method": "Independent re-implementation of the NIST 6061-T6 equation in Python using fractions.Fraction (exact rational arithmetic, no floating point), Lf = Li (1 + eps(Tf)) / (1 + eps(Ti)), with the 18 K piecewise rule. Generated 2026-10-22; script reproduced in tests/benchmarks/README.md.",
+  "initialLength_mm": 1000,
+  "cases": [
+    { "Ti_K": 293.15, "Tf_K": 77, "Lf_mm": 996.109655149, "dL_mm": -3.890344851 },
+    { "Ti_K": 293.15, "Tf_K": 4, "Lf_mm": 995.842473258, "dL_mm": -4.157526742 },
+    { "Ti_K": 293, "Tf_K": 4, "Lf_mm": 995.845855491, "dL_mm": -4.154144509 },
+    { "Ti_K": 77, "Tf_K": 293.15, "Lf_mm": 1003.905538744, "dL_mm": 3.905538744 },
+    { "Ti_K": 300, "Tf_K": 4, "Lf_mm": 995.688078728, "dL_mm": -4.311921272 },
+    { "Ti_K": 4, "Tf_K": 300, "Lf_mm": 1004.330594455, "dL_mm": 4.330594455 },
+    { "Ti_K": 20, "Tf_K": 293, "Lf_mm": 1004.171169057, "dL_mm": 4.171169057 }
+  ]
+}

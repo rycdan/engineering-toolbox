@@ -1,0 +1,14 @@
+{
+  "id": "TE-B2",
+  "source": "nbs-monograph-29",
+  "citation": "R. J. Corruccini and J. J. Gniewek, Thermal Expansion of Technical Solids at Low Temperatures, NBS Monograph 29 (1961), doi:10.6028/NBS.MONO.29, Table 2.1 (Elements), aluminum column. Retrieved 2026-10-22.",
+  "quantity": "c = (L293 - LT)/L293 x 1e5 (positive = contraction)",
+  "material": "Pure aluminum (measured compilation). NOT 6061-T6: this is a material-proxy check of the NIST 6061-T6 model.",
+  "transcription": "From the PDF OCR text layer; visual verification pending (docs/DECISIONS.md Q-004). Excluded: <= 10 K (marked as estimated in the source) and 240 K (OCR text 'lis', ambiguous).",
+  "tolerance": "|model - measured| <= 4 % of |measured| (NIST fit error) + 0.5 (half the table resolution)",
+  "points": [
+    [20, 415], [30, 414], [40, 413], [50, 410], [60, 405], [70, 399], [80, 391], [90, 381],
+    [100, 370], [120, 343], [140, 312], [160, 277], [180, 240], [200, 201], [220, 160],
+    [260, 75], [273, 45], [280, 30], [293, 0], [300, -16]
+  ]
+}

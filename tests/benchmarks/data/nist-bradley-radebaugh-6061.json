@@ -1,0 +1,13 @@
+{
+  "id": "TE-B1",
+  "source": "nist-bradley-radebaugh",
+  "citation": "P. E. Bradley and R. Radebaugh, Properties of Selected Materials at Cryogenic Temperatures, NIST, https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=913059, p. 10, 'Linear Thermal Expansion (in 10^-5)', Al 6061 column. Retrieved 2026-10-22 from the PDF text layer (text-native PDF).",
+  "quantity": "y = (L - L293)/L293 x 1e5",
+  "note": "Values are kept as printed strings so the tolerance (half a unit in the last printed digit) follows the printed precision. The 6061 column is blank below 18 K. Anomaly: at 180 K the table prints -241.5, while exact evaluation of the published coefficients gives -241.5508 (would round to -241.6); the 0.0008 excess (8e-9 strain) is attributed to the table's own evaluation/rounding. All other 19 points round exactly.",
+  "points": [
+    ["18", "-415.5"], ["20", "-415.4"], ["30", "-414.3"], ["40", "-411.5"], ["50", "-407.3"],
+    ["60", "-401.6"], ["70", "-394.5"], ["80", "-386.1"], ["90", "-376.4"], ["100", "-365.4"],
+    ["120", "-340.2"], ["140", "-310.8"], ["160", "-277.8"], ["180", "-241.5"], ["200", "-202.6"],
+    ["220", "-161.5"], ["240", "-118.6"], ["260", "-74.40"], ["280", "-29.45"], ["300", "15.81"]
+  ]
+}
