@@ -2,3 +2,6 @@
 *.png binary
 *.jpg binary
 *.pdf binary
+
+# Source snapshots are kept byte-for-byte so MANIFEST.json hashes stay valid.
+data-sources/** -text
