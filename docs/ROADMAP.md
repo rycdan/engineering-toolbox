@@ -12,7 +12,7 @@ Status key: **available** · **in progress** · **planned** (visible in the app 
 | 2 | Machining Threads & Tolerances | planned | 3 |
 | 3 | Shaft & Hole Fits | planned | 4 |
 | 4 | Materials (general, room-temperature reference) | planned | 8 (data sourcing can start earlier) |
-| 5 | Thermal Expansion & Contraction | **available** (v1 scope below) | 1 |
+| 5 | Thermal Expansion & Contraction | **available**, 38 NIST models | 1, NIST dataset 2026-10-23 |
 | 6 | Conductive Heat Flow | planned | 5 |
 | 7 | Bolt Torque & Preload | planned | 5 |
 | 8 | Pin & Slot GD&T Guide | planned | 6–7 |
@@ -34,6 +34,12 @@ Status key: **available** · **in progress** · **planned** (visible in the app 
 - Thermal calculator: constant-CTE estimate (two explicitly labeled conventions) and NIST 6061-T6 reference-strain model with the piecewise 18 K breakpoint, Kelvin conversion, ×10⁻⁵ scaling, and equation-range blocking.
 - Result plot, expandable methods/sources, limitations next to results, reset, copyable record, printable record, reproducible URL state.
 - Benchmarks against NIST's published evaluated table, measured NBS Monograph 29 aluminum contraction, and hand-worked constant-CTE cases.
+
+### NIST cryogenic material dataset (2026-10-23)
+
+- All 43 entries of the NIST cryogenic material-properties index snapshotted, extracted (128 property models: k, cp, linear expansion, CTE, E), and checked against NIST's evaluated tables (84 exact, 22 within 0.1 %, 6 differ and are documented, 16 not tabulated).
+- Thermal calculator: 36 published strain curves plus integrated-CTE models for OFHC copper and silicon (validated against measured contraction), grouped by material family with variant, verification status, and coverage shown.
+- Stored for later tools: thermal conductivity (heat flow), specific heat, Young's modulus, regenerator volumetric heat capacity.
 
 ## Remaining work by iteration
 
@@ -63,7 +69,7 @@ Later iterations may be reordered on request; each keeps its verification requir
 
 ### Iteration 5 — Conductive Heat Flow and Bolt Torque & Preload (brief §6, §7)
 
-- Heat flow: `Q = (A/L)·∫k(T)dT`; area, rectangle, round, tube, AWG (conductor only, stranded override), parallel count; conductance vs. conductivity kept distinct; RRR/purity distinctions. Contact resistance, intercepts, varying sections, radiation are later extensions.
+- Heat flow: the verified NIST k(T) models are already in the dataset (43 conductivity models, including OFHC copper RRR 50–500). Models flagged "differs" (G-10 normal direction) need resolution or labeling first. `Q = (A/L)·∫k(T)dT`; area, rectangle, round, tube, AWG (conductor only, stranded override), parallel count; conductance vs. conductivity kept distinct; RRR/purity distinctions. Contact resistance, intercepts, varying sections, radiation are later extensions.
 - Torque/preload: `T = K·F·d` both directions, K as empirical nut factor, torque/K ranges to preload range, prevailing torque separate, stress-area tensile stress vs. selected proof/yield basis. No universal safe torque.
 
 ### Iterations 6–7 — Pin & Slot GD&T Guide (brief §8)
@@ -81,11 +87,11 @@ Later iterations may be reordered on request; each keeps its verification requir
 ### Iteration 9 — shareable state, export polish, and data coverage
 
 - URL state, copy, and print for every calculator (thermal already has them).
-- Additional verified NIST cryogenic models (e.g., 304/316 stainless, OFHC copper, G-10, Ti-6Al-4V, Invar), temperature-dependent CTE models with documented definitions, and two-material differential motion.
+- Two-material differential motion using the NIST expansion models.
+- Re-check the NIST snapshot periodically (new materials or revised coefficients mean a new dated snapshot and a dataset version bump; older versions stay reproducible).
 
 ## Thermal tool: deferred items
 
 - Two-material differential motion comparison.
-- Additional NIST models (each needs source verification and benchmarks).
-- Instantaneous-CTE integration (`exp(∫α dT)`) for sourced α(T) models; reference-length-normalized coefficient conventions.
+- A property-explorer view (k, cp, E, α vs. T) for the NIST dataset, if wanted. It is not one of the brief's eight destinations.
 - Optional, explicitly labeled extrapolation override outside a model's equation range (blocked in v1).

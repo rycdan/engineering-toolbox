@@ -12,7 +12,9 @@ Calculation definitions, conventions, and validation approach. Each implemented 
 - **Precision:** calculations use IEEE-754 double precision with no intermediate rounding. Display rounding is applied only in formatting (`src/engineering/format.ts`), and copied records include more digits than the on-screen summary.
 - **Cancellation:** length change is computed directly as a ratio difference (below), not as `Lf − Li` after computing `Lf`, so small changes on long parts keep their significant digits.
 
-## Thermal expansion and contraction (calculation version `thermal-expansion@1.0.0`)
+## Thermal expansion and contraction (calculation version `thermal-expansion@1.1.0`)
+
+`1.0.0` (2026-10-22): reference-strain and constant-CTE methods. `1.1.0` (2026-10-23): adds integrated-CTE models (Method C) and the measured-data-range note; reference-strain and constant-CTE results are unchanged.
 
 Outputs: final length `Lf`, signed change `ΔL = Lf − Li` (negative = contraction), fractional strain `ΔL/Li`, and the effective mean CTE over the interval, `ΔL / (Li·ΔT)` (informational).
 
@@ -29,12 +31,16 @@ Lf = Li · (1 + ε(Tf)) / (1 + ε(Ti))
 - The ratio form is required even when `Ti` equals the reference temperature. The fitted curve is not exactly zero at its nominal reference (for NIST 6061-T6, `ε(293 K) = −3.6×10⁻⁷`), and the ratio removes that offset.
 - **Scaling:** the source's tabulated quantity `y` maps to strain through a stated factor (NIST 6061-T6: `ε = y × 10⁻⁵`). The factor is stored with the model, never inferred.
 - **Kelvin:** model equations are evaluated in kelvin only. Inputs are converted first.
-- **Piecewise models:** each segment states its interval and which side owns a breakpoint. The model data records the source wording and the measured discontinuity at each breakpoint (see NIST 6061-T6 below), and a test checks that the discontinuity stays within the documented bound.
-- **Range:** temperatures outside the model's **equation range** are blocked. The UI shows the source's **measured-data range** separately from the equation range. v1 has no extrapolation override.
+- **Piecewise models:** each segment states its interval and which side owns a breakpoint. The higher-temperature expression always owns the shared temperature. That is consistent with NIST's evaluated tables (e.g. Invar at 80 K prints the polynomial value) and with T > T_low wording (D-006, D-013). The discontinuity at each breakpoint is computed from the published expressions. Jumps of 1×10⁻⁷ strain or more are shown next to results (e.g. Invar: 2.1×10⁻⁶ at 80 K).
+- **Range:** temperatures outside the model's **equation range** are blocked, with no extrapolation override. The source's **measured-data range** is shown separately. If an interval leaves the data range but stays inside the equation range, a warning appears next to the result (e.g. silicon below 13 K).
 
-#### NIST 6061-T6 aluminum (model `nist-6061-t6-linear-expansion`, revision 1)
+#### NIST models
 
-Source: NIST Cryogenic Material Properties, 6061-T6 Aluminum (UNS A96061), "Linear expansion" column (see [DATA_SOURCES.md](DATA_SOURCES.md#s-nist-6061-t6)).
+All 36 NIST linear-expansion curves (31 materials, including direction and density variants) are reference-strain models generated from the NIST dataset ([DATA_SOURCES.md](DATA_SOURCES.md#s-nist-cryo--nist-cryogenic-material-properties-all-materials)). Model ids are `<material>/linear-expansion[/<variant>]`. The worked example below is 6061-T6.
+
+#### NIST 6061-T6 aluminum (model `al-6061-t6/linear-expansion`, revision 1; formerly `nist-6061-t6-linear-expansion`)
+
+Source: NIST Cryogenic Material Properties, 6061-T6 Aluminum (UNS A96061), "Linear expansion" column.
 
 ```text
 y = (L − L293)/L293 × 10⁵
@@ -59,9 +65,34 @@ Two conventions, explicitly selectable and labeled:
 
 The two differ by about `Li·(αΔT)²/2`, negligible for ordinary ranges. `ΔT` is a temperature difference converted without offsets. A constant CTE carries no temperature range of its own, so the result shows a limitation note. When either temperature is below 200 K it also warns that constant room-temperature CTEs overestimate cryogenic contraction. Example: 22.6×10⁻⁶/K × 289 K = 0.65 %, versus NIST's 0.415 % for 6061-T6 from 293 K to 4 K.
 
-### Future: CTE-curve models
+### Method C — integrated CTE (NIST materials published only as α(T))
 
-For sourced instantaneous `α(T)`: `Lf/Li = exp(∫α dT)`. For coefficients normalized to a reference length (`α* = (1/L_ref)·dL/dT`): `Lf = Li + L_ref·∫α* dT`, with `L_ref` inferred consistently. Not implemented in v1, and never mixed with Method A.
+NIST gives OFHC copper and silicon a CTE curve but no linear-expansion curve. For these:
+
+```text
+ε(T) = ∫ α(T′) dT′  from 293 K to T        (α taken as (1/L293)·dL/dT)
+Lf   = Li · (1 + ε(Tf)) / (1 + ε(Ti))
+```
+
+- **Definition:** NIST does not state whether its α is instantaneous `(1/L)·dL/dT` or referenced to `L293`. The app uses the reference-length convention, which matches NBS Monograph 29's definition `dL/(L293·dT)` and NIST's `(L − L293)/L293` strain quantity. The instantaneous convention would give `ln(1 + ε) = ∫α dT`, a difference of ≈ ε²/2: 5×10⁻⁶ strain for copper (0.16 % of its contraction) and below 10⁻⁷ for silicon. Both are inside the stated fit errors. The note is shown with every result.
+- **Quadrature:** composite 5-point Gauss–Legendre on panels ≤ 1 K. It is exact for polynomials of degree ≤ 9 per panel, and the panels are fine enough for silicon's erf blends (≈1 K wide). A test integrates the analytic derivative of the 6061-T6 polynomial and recovers the published strain difference to 1×10⁻¹⁴.
+- **Validation:** measured contraction (NBS Monograph 29). Copper is within 0.72×10⁻⁵ from 20 to 300 K; silicon is within 0.43×10⁻⁵ from 40 to 300 K, including its non-monotonic contraction (TE-B6).
+- Sapphire has both curves; the published linear-expansion curve is used. Mixing definitions within one material is never allowed.
+
+### NIST equation forms (all properties)
+
+Evaluated in `src/engineering/cryogenic/equations.ts`; T in kelvin:
+
+| Form | Used for |
+|---|---|
+| `y = Σ cᵢTⁱ`, with constant `f` below `T_low` | linear expansion (×10⁻⁵), Young's modulus (GPa) |
+| `log₁₀ y = Σ cᵢ(log₁₀T)ⁱ` | thermal conductivity, specific heat, CTE |
+| `log₁₀ k = (a + c√T + eT + gT^1.5 + iT²)/(1 + b√T + dT + fT^1.5 + hT²)` | OFHC copper k (RRR 50–500) |
+| erf-blended log form (page image) | Kevlar-49 fiber and composite k |
+| erf-blended piecewise form (page image), ×10⁻⁸/K | silicon CTE |
+| tabulated, linear interpolation | regenerator volumetric heat capacity |
+
+`erf` is implemented in `src/engineering/cryogenic/erf.ts` (series for |x| ≤ 2.5, continued fraction above; agrees with CPython `math.erf` to 1×10⁻¹⁴).
 
 ### Validation (tests in `tests/`)
 
@@ -75,6 +106,10 @@ Independent or source-derived benchmarks, not the app's formula checked against 
 | TE-B4 | Hand-worked constant-CTE cases (steel, aluminum; °C and °F inputs) | Hand calculation recorded in test file | 1×10⁻¹² relative |
 | TE-P1… | Properties: zero ΔT gives zero change; heating lengthens, cooling shortens; round trip Ti→Tf→Ti returns Li; unit equivalence (mm/in, K/°C/°F/°R) | Physical/algebraic invariants | 1×10⁻¹² relative |
 | TE-F… | Failure cases: non-finite, non-positive length, T ≤ 0 K, out-of-range model temperatures | — | Must reject |
+| TE-B5 | All 128 NIST dataset models vs. NIST's evaluated tables (Bradley & Radebaugh), by value-matched column | Source-computed tables; checks transcription, units, piecewise handling, and image-transcribed equations | Exact to printed precision, or ≤ 0.1 % (of total contraction for expansion); documented anomalies only; the list of differing models is fixed in the test |
+| TE-B6 | OFHC copper and silicon integrated CTE vs. NBS Monograph 29 measured contraction | Measured data | Copper ≤ 1×10⁻⁵; silicon ≤ 0.5×10⁻⁵ |
+| DS-1 | Dataset regenerated from the snapshots equals the committed JSON; snapshot SHA-256 match the manifest | Reproducibility | Byte-identical |
+| TE-M… | Every thermal model: finite strain over its range, \|ε\| < 3 %, result and plot valid; registry ids unique; sources resolve | Invariants | — |
 
 ## Confirmed conventions for later modules
 

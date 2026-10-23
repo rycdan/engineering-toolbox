@@ -21,7 +21,7 @@ Planned tools appear in the app with their scope only. They show no inputs or nu
 
 ### Thermal Expansion & Contraction (v1)
 
-- **NIST 6061-T6 aluminum** temperature-dependent model, 4–300 K. Uses the ratio method `Lf = Li(1+ε(Tf))/(1+ε(Ti))` with the source's piecewise 18 K breakpoint and ×10⁻⁵ scaling. Temperatures outside the equation range are blocked.
+- **38 NIST cryogenic models** covering every material on the [NIST cryogenic material-properties index](https://trc.nist.gov/cryogenics/materials/materialproperties.htm) that has expansion data. These include aluminum alloys, stainless steels, Invar, Inconel 718, Ti-6Al-4V, nickel steels, beryllium, G-10, PTFE, nylon, PVC, foams, sapphire, OFHC copper, and silicon. Published strain curves use the ratio method `Lf = Li(1+ε(Tf))/(1+ε(Ti))` with each source's breakpoints and scaling. Copper and silicon integrate NIST's CTE curve. Temperatures outside each equation range are blocked, and each model shows its verification against NIST's evaluated tables.
 - **Constant-CTE estimate** with your own coefficient, in two labeled conventions: mean-linear and instantaneous-exponential.
 - Inch and metric lengths, K / °C / °F / °R temperatures, and CTE per K or per °F.
 - Final length, signed change, strain, mean CTE over the interval, and a length-vs-temperature plot.
@@ -46,7 +46,9 @@ All scripts are listed in [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md#scripts).
 
 Engineering calculations are checked against sourced benchmarks, not only against the app's own formula. See [docs/ENGINEERING_METHODS.md](docs/ENGINEERING_METHODS.md#validation-tests-in-tests) and [tests/benchmarks/](tests/benchmarks/).
 
-- **TE-B1:** NIST's published evaluated table for 6061 (Bradley & Radebaugh), 18–300 K.
+- **TE-B1 / TE-B5:** NIST's evaluated tables (Bradley & Radebaugh). All 128 transcribed NIST property models are compared column by column.
+- **TE-B6:** copper and silicon integrated CTE vs. measured contraction (NBS Monograph 29).
+- **DS-1:** the NIST dataset is regenerated from committed page snapshots and must match byte for byte.
 - **TE-B2:** measured aluminum contraction from NBS Monograph 29 (material-proxy check).
 - **TE-B3:** an exact-rational independent re-implementation.
 - **TE-B4:** hand-worked constant-CTE cases.
@@ -59,12 +61,14 @@ src/
   app/          navigation, routing, overview, destination registry
   components/   inputs, plot, source list, planned-tool placeholder
   engineering/  pure calculation functions, units, formatting
-  data/         versioned models, materials, sources (dataset version)
+  data/         versioned models, sources, NIST cryogenic dataset (dataset version)
   features/     tool UIs (thermal)
 tests/
   unit/         units, formatting, engine invariants, URL state
   benchmarks/   sourced and independent benchmark cases
 e2e/            Playwright browser checks
+data-sources/   dated source snapshots (NIST pages, NIST evaluated-table PDF) with hashes
+tools/          dataset extraction and verification scripts
 docs/           brief, roadmap, methods, data sources, decisions, Git policy
 ```
 

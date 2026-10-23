@@ -24,3 +24,5 @@ Adapted from the brief's policy. It applies to every development session.
 | `npm run preview` | Serve the production build locally |
 | `npm run e2e` | Playwright browser checks against the production build (first run: `npx playwright install chromium`) |
 | `npm run check` | typecheck + lint + test + build |
+| `npm run data:nist` | Re-extract the NIST dataset from `data-sources/` snapshots and re-run the evaluated-table verification |
+| `npm run data:bradley-layout` | Re-extract the NIST evaluated-table PDF layout (Python + pypdf; rarely needed) |
