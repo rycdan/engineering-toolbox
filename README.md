@@ -30,7 +30,7 @@ Planned tools appear in the app with their scope only. They show no inputs or nu
 
 ## Run locally
 
-Requires Node.js ≥ 22.12 (developed on Node 24 LTS).
+Requires Node.js ≥ 22.18 (developed on Node 24 LTS). New machine? See [docs/DEVELOPMENT_SETUP.md](docs/DEVELOPMENT_SETUP.md).
 
 ```sh
 npm ci                 # install exact locked dependencies
@@ -74,6 +74,7 @@ docs/           brief, roadmap, methods, data sources, decisions, Git policy
 
 ## Documentation
 
+- [Development setup and handoff](docs/DEVELOPMENT_SETUP.md): new-machine setup, workflow, current status
 - [Project brief](docs/PROJECT_BRIEF.md): authoritative requirements
 - [Roadmap](docs/ROADMAP.md)
 - [Engineering methods](docs/ENGINEERING_METHODS.md)

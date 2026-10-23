@@ -5,7 +5,7 @@
   "description": "Engineering Toolbox: sourced reference data and transparent calculations for mechanical design, machining, and cryogenic engineering.",
   "type": "module",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "dev": "vite",
