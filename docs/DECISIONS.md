@@ -14,6 +14,7 @@
 | D-008 | 2026-10-22 | Plots are hand-written SVG components, with no chart library. | Small, accessible, printable, and themeable, with no dependency risk. Revisit if interactive tolerance charts need more. |
 | D-009 | 2026-10-22 | Reproducibility: every result record includes calculation version, dataset version, model id and revision, and all inputs with units. The URL hash includes the dataset version and warns on mismatch. | Brief §Product objective. |
 | D-010 | 2026-10-22 | Planned destinations render a scope summary and status only, with no inputs and no numbers. | Brief: no plausible fake results. |
+| D-011 | 2026-10-23 | Iteration 0–1 feature branch fast-forward merged to `main` to publish on GitHub Pages; individual commits preserved. | User requested GitHub Pages publication and enabled Pages (Source: GitHub Actions). Pages deploys only from `main`. |
 
 ## Assumptions
 
